@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <defs>
+    <filter id="a" x="-100%" y="-100%" width="400%" height="400%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow stdDeviation="10" dx="10" dy="10" flood-color="#000" flood-opacity=".2" x="0%" y="0%" width="100%" height="100%" result="dropShadow"/>
+    </filter>
+    <filter id="b" x="-100%" y="-100%" width="400%" height="400%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow stdDeviation="10" dx="10" dy="10" flood-color="#000" flood-opacity=".2" x="0%" y="0%" width="100%" height="100%" result="dropShadow"/>
+    </filter>
+  </defs>
+  <g stroke-linecap="round">
+    <circle r="400" cx="400" cy="400" fill="#ef84c5"/>
+    <circle cx="167" cy="251" fill="#71ff47" filter="url(#a)" r="31"/>
+    <circle cx="539" cy="268" fill="#71ff47" filter="url(#a)" r="32"/>
+    <path d="m100 500 q314 287 600 0" stroke-width="13" stroke="#141263" fill="none" filter="url(#b)"/>
+  </g>
+</svg>
