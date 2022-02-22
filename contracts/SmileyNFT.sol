@@ -10,9 +10,12 @@ import "hardhat/console.sol";
 
 import { Base64 } from "./libraries/Base64.sol";
 
-contract MyEpicNFT is ERC721URIStorage {
+contract SmileyNFT is ERC721URIStorage {
   using Counters for Counters.Counter;
   Counters.Counter private _tokenIds;
+
+  // Max number of smileys that can be minted
+  uint256 constant MAX_SMILEYS_TO_MINT = 100;
 
   string constant SVG_OPENING_STRING = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'><defs><filter id='a' x='-100%' y='-100%' width='400%' height='400%' filterUnits='objectBoundingBox' primitiveUnits='userSpaceOnUse' color-interpolation-filters='sRGB'><feDropShadow stdDeviation='10' dx='10' dy='10' flood-color='#000' flood-opacity='.2' x='0%' y='0%' width='100%' height='100%' result='dropShadow'/></filter><filter id='b' x='-100%' y='-100%' width='400%' height='400%' filterUnits='objectBoundingBox' primitiveUnits='userSpaceOnUse' color-interpolation-filters='sRGB'><feDropShadow stdDeviation='10' dx='10' dy='10' flood-color='#000' flood-opacity='.2' x='0%' y='0%' width='100%' height='100%' result='dropShadow'/></filter></defs><g stroke-linecap='round'>";
   string constant SVG_CLOSING_STRING = "</g></svg>";
@@ -63,63 +66,56 @@ contract MyEpicNFT is ERC721URIStorage {
   string[] featureColors = ["#a5821a", "#48f2f9", "#7b83f0", "#377453", "#141263", "#21b059", "#54cdb2", "#71ff47", "#bdf0d2", "#73df50", "#68a0f6"];
   string[] faceColors = ["#c8920f", "#b38a98", "#1379e5", "#ffc4a8", "#cd96d9", "#691fbe", "#4859d5", "#2486a3", "#ef84c5", "#e47057"];
 
+  event NewSmileyNFTMinted(address sender, uint256 tokenId);
+
   // We need to pass the name of our NFTs token and its symbol.
   constructor() ERC721 ("SmileyNFT", "SMILES") {
     console.log("This is my awesome smiley (maybe frowny) face NFT collection!");
   }
 
-  function random(string memory input) internal pure returns (uint256) {
-    return uint256(keccak256(abi.encodePacked(input)));
+  function random(string memory input) internal view returns (uint256) {
+    // Adding timestamp and sender to give us a bit more randomness. Of course, this
+    // still isn't entirely random, but probably good enough for our case
+    return uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, input)));
+  }
+
+  function generateRandomIntInRange(string memory strToHash, uint256 tokenId, uint256 rangeSize, uint256 start) internal view returns (uint256) {
+    uint256 rand = random(string(abi.encodePacked(strToHash, Strings.toString(tokenId))));
+    return (rand % rangeSize) + start;
   }
 
   function pickRandomFaceColor(uint256 tokenId) public view returns (string memory) {
-    // "seed" the generator
-    uint256 rand = random(string(abi.encodePacked("a face color", Strings.toString(tokenId))));
-    // Squash the # between 0 and the length of the array to avoid going out of bounds.
-    rand = rand % faceColors.length;
+    uint256 rand = generateRandomIntInRange("a face color", tokenId, faceColors.length, 0);
     return string(abi.encodePacked(BACKGROUND_SHAPE_START, faceColors[rand], BACKGROUND_SHAPE_END));
   }
 
   function generateRandomEyes(uint256 tokenId) public view returns (string memory) {
     // Determine the our first eye color. Later we'll roll to see if we should have a different second eye
-    uint256 eyeColorRand = random(string(abi.encodePacked("first eye color", Strings.toString(tokenId))));
-    eyeColorRand = eyeColorRand % featureColors.length;
+    uint256 eyeColorRand = generateRandomIntInRange("first eye color", tokenId, featureColors.length, 0);
     string memory firstEyeColor = featureColors[eyeColorRand];
 
     // Now let's determine if we should have different eye colors. This will
     // actually be fairly rare, let's do a 1 out of 100 chance
     string memory secondEyeColor;
-    uint256 sameEyeRand = random(string(abi.encodePacked("different eyes", Strings.toString(tokenId))));
-    sameEyeRand = sameEyeRand % DIFF_EYE_CHANCE;
+    uint256 sameEyeRand = generateRandomIntInRange("different eyes", tokenId, DIFF_EYE_CHANCE, 0);
     if (sameEyeRand == 0) {
-      eyeColorRand = random(string(abi.encodePacked("second eye color", Strings.toString(tokenId))));
       // Technically this could result in the same color as before. I guess that's just bad luck and
       // makes two different eye colors slightly rarer.
-      eyeColorRand = eyeColorRand % featureColors.length;
+      eyeColorRand = generateRandomIntInRange("second eye color", tokenId, featureColors.length, 0);
       secondEyeColor = featureColors[eyeColorRand];
     } else {
       secondEyeColor = firstEyeColor;
     }
   
-    // "seed" the generator, use these for left eye values
-    uint256 leftEyeXRand = random(string(abi.encodePacked("a left eye x pos", Strings.toString(tokenId))));
-    leftEyeXRand = (leftEyeXRand % EYE_X_RANGE) + LEFT_EYE_X_START;
-
-    uint256 leftEyeYRand = random(string(abi.encodePacked("a left eye y pos", Strings.toString(tokenId))));
-    leftEyeYRand = (leftEyeYRand % EYE_Y_RANGE) + EYE_Y_START;
-    
-    uint256 leftEyeRRand = random(string(abi.encodePacked("a left eye r val", Strings.toString(tokenId))));
-    leftEyeRRand = (leftEyeRRand % EYE_R_RANGE) + EYE_R_START;
+    // use these for left eye values
+    uint256 leftEyeXRand = generateRandomIntInRange("a left eye x pos", tokenId, EYE_X_RANGE, LEFT_EYE_X_START);
+    uint256 leftEyeYRand = generateRandomIntInRange("a left eye y pos", tokenId, EYE_Y_RANGE, EYE_Y_START);
+    uint256 leftEyeRRand = generateRandomIntInRange("a left eye r val", tokenId, EYE_R_RANGE, EYE_R_START);
 
     // use these for right eye values
-    uint256 rightEyeXRand = random(string(abi.encodePacked("a right eye x pos", Strings.toString(tokenId))));
-    rightEyeXRand = (rightEyeXRand % EYE_X_RANGE) + RIGHT_EYE_X_START;
-
-    uint256 rightEyeYRand = random(string(abi.encodePacked("a right eye y pos", Strings.toString(tokenId))));
-    rightEyeYRand = (rightEyeYRand % EYE_Y_RANGE) + EYE_Y_START;
-
-    uint256 rightEyeRRand = random(string(abi.encodePacked("a right eye r val", Strings.toString(tokenId))));
-    rightEyeRRand = (rightEyeRRand % EYE_R_RANGE) + EYE_R_START;
+    uint256 rightEyeXRand = generateRandomIntInRange("a right eye x pos", tokenId, EYE_X_RANGE, RIGHT_EYE_X_START);
+    uint256 rightEyeYRand = generateRandomIntInRange("a right eye y pos", tokenId, EYE_Y_RANGE, EYE_Y_START);
+    uint256 rightEyeRRand = generateRandomIntInRange("a right eye r val", tokenId, EYE_R_RANGE, EYE_R_START);
 
     // First x, then y, then color, then r 
     string memory leftEyeString = string(abi.encodePacked(EYE_SHAPE_FIRST, Strings.toString(leftEyeXRand),
@@ -134,36 +130,26 @@ contract MyEpicNFT is ERC721URIStorage {
                                                            EYE_SHAPE_FOURTH, Strings.toString(rightEyeRRand),
                                                            EYE_SHAPE_FIFTH));
 
-    // console.log("Generated left eye string: %s", leftEyeString);
-    // console.log("Generated right eye string: %s", rightEyeString);
     return string(abi.encodePacked(leftEyeString, rightEyeString));
   }
 
   function generateRandomMouth(uint256 tokenId) public view returns (string memory) {
     // Determine the mouth color.
-    uint256 mouthColorRand = random(string(abi.encodePacked("mouth color", Strings.toString(tokenId))));
-    mouthColorRand = mouthColorRand % featureColors.length;
+    uint256 mouthColorRand = generateRandomIntInRange("mouth color", tokenId, featureColors.length, 0);
     string memory mouthColor = featureColors[mouthColorRand];
 
     // Now let's determine if we should have a frowny face. This will
     // actually be fairly rare, let's do a 1 out of 10 chance
     bool frowny = false;
-    uint256 frownyRand = random(string(abi.encodePacked("frowny face", Strings.toString(tokenId))));
-    frownyRand = frownyRand % DIFF_EYE_CHANCE;
+    uint256 frownyRand = generateRandomIntInRange("frowny face", tokenId, DIFF_EYE_CHANCE, 0);
     if (frownyRand == 0) {
       frowny = true;
     }
   
     // "seed" the generator
-    uint256 mouthQXRand = random(string(abi.encodePacked("a mouth qx value", Strings.toString(tokenId))));
-    mouthQXRand = (mouthQXRand % MOUTH_QX_VAL_RANGE) + MOUTH_QX_VAL_START;
-
-    uint256 mouthQYRand = random(string(abi.encodePacked("a mouth qy value", Strings.toString(tokenId))));
-    mouthQYRand = (mouthQYRand % MOUTH_QY_VAL_RANGE) + MOUTH_QY_VAL_START;
-    
-    uint256 mouthWidthRand = random(string(abi.encodePacked("a mouth width value", Strings.toString(tokenId))));
-    mouthWidthRand = (mouthWidthRand % MOUTH_WIDTH_RANGE) + MOUTH_WIDTH_START;
-
+    uint256 mouthQXRand = generateRandomIntInRange("a mouth qx value", tokenId, MOUTH_QX_VAL_RANGE, MOUTH_QX_VAL_START);
+    uint256 mouthQYRand = generateRandomIntInRange("a mouth qy value", tokenId, MOUTH_QY_VAL_RANGE, MOUTH_QY_VAL_START);
+    uint256 mouthWidthRand = generateRandomIntInRange("a mouth width value", tokenId, MOUTH_WIDTH_RANGE, MOUTH_WIDTH_START);
 
     // First qx, then qy, then width, then color
     // full example -- <path d='m250 450 q180 300 300 0' stroke-width='10' stroke='#7c0a02' fill='none' filter='url(#b)'/>
@@ -186,8 +172,14 @@ contract MyEpicNFT is ERC721URIStorage {
     return mouthString;
   }
 
-  function makeAnEpicNFT() public {
+  function getNumberMinted() public view returns (uint256) {
+    // Just use the token id, plus 1 since we're 0 indexed
+    return _tokenIds.current() + 1;
+  }
+
+  function mintSmileyNFT() public {
     uint256 newItemId = _tokenIds.current();
+    require(newItemId < MAX_SMILEYS_TO_MINT, "The max number of smileys to mint has been reached!");
 
     // Grab our face, some eyes, and a mouth
     string memory face = pickRandomFaceColor(newItemId);
@@ -228,5 +220,7 @@ contract MyEpicNFT is ERC721URIStorage {
   
     _tokenIds.increment();
     console.log("An NFT w/ ID %s has been minted to %s", newItemId, msg.sender);
+
+    emit NewSmileyNFTMinted(msg.sender, newItemId);
   }
 }
