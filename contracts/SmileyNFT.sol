@@ -173,8 +173,8 @@ contract SmileyNFT is ERC721URIStorage {
   }
 
   function getNumberMinted() public view returns (uint256) {
-    // Just use the token id, plus 1 since we're 0 indexed
-    return _tokenIds.current() + 1;
+    // Just use the token id, since we're 0 indexed this is the number that have already been minted.
+    return _tokenIds.current();
   }
 
   function mintSmileyNFT() public {

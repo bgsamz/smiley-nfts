@@ -9,7 +9,6 @@ typechain
 #Hardhat files
 cache
 artifacts
-hardhat.config.js
 
 # Misc stuff
 lesson_reqs
